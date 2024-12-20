@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Loja de Compras</title>
+    <style>
+        body {
+            background-color: #3a003d;
+            color: #ffdd57;
+        }
+        .container {
+            margin-top: 50px;
+            border: 2px solid #ff0077;
+            border-radius: 10px;
+            padding: 20px;
+            background-color: #6a007d;
+        }
+        .btn-pink {
+            background-color: #ff0077;
+            color: white;
+        }
+        .btn-gold {
+            background-color: #ffd700;
+            color: #3a003d;
+        }
+        .btn-danger {
+            background-color: #d32f2f;
+            color: white;
+        }
+        .list-group-item {
+            background-color: #f8bbd0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #000; /* Define a fonte como preto para os itens da lista */
+        }
+        .product-text {
+            flex-grow: 1;
+            text-align: center;
+        }
+        .product-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .logo {
+            width: 100px;
+            height: auto;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 40px;
+        }
+        .total-container {
+            background-color: #ff0077;
+            color: #ffd700;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .btn-check {
+            background-color: #ffd700;
+            color: #3a003d;
+        }
+    </style>
+</head>
+<body>
+
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlGmfSmFEmEI3cJto88atoRSiCezQfAvtMNBhmuCtV0kXfiL7FHcQ4krLZj76cFjM7K34&usqp=CAU" alt="Logo" class="logo">
+
+<div class="container">
+    <h1 class="text-center">Loja de Compras</h1>
+    <div class="mb-3">
+        <label for="product" class="form-label">Adicionar Produto</label>
+        <input type="text" id="product" class="form-control" placeholder="Digite o nome do produto" />
+        <div class="invalid-feedback" id="feedback"></div>
+    </div>
+    <div class="mb-3">
+        <label for="imageURL" class="form-label">URL da Imagem do Produto</label>
+        <input type="text" id="imageURL" class="form-control" placeholder="Cole a URL da imagem" />
+    </div>
+    <button id="addBtn" class="btn btn-pink">Adicionar</button>
+    <button id="toggleSelectAll" class="btn btn-gold mt-2">Selecionar Todos</button>
+
+    <h2 class="mt-4">Produtos Cadastrados</h2>
+    <ul id="productList" class="list-group"></ul>
+
+    <!-- Calculadora de Total -->
+    <div class="mt-4 total-container">
+        <h3>Total no Carrinho</h3>
+        <p>Total: <span id="totalPrice">R$0,00</span></p>
+        <p>Taxa: <span id="taxAmount">R$0,00</span></p>
+        <p>Valor Total: <span id="totalWithTax">R$0,00</span></p>
+        <button id="finalizePayment" class="btn btn-pink mt-2">Finalizar Pagamento</button>
+    </div>
+</div>
+
+<!-- Modal de Pagamento -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalLabel">Informações de Pagamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="address" class="form-label">Endereço</label>
+                    <input type="text" id="address" class="form-control" placeholder="Digite seu endereço" />
+                </div>
+                <div class="mb-3">
+                    <label for="paymentMethod" class="form-label">Método de Pagamento</label>
+                    <select id="paymentMethod" class="form-select">
+                        <option value="cartao">Cartão de Crédito</option>
+                        <option value="boleto">Boleto</option>
+                        <option value="pix">PIX</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-pink" id="confirmPayment">Confirmar Pagamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const productList = document.getElementById('productList');
+    const productInput = document.getElementById('product');
+    const imageURLInput = document.getElementById('imageURL');
+    const addBtn = document.getElementById('addBtn');
+    const feedback = document.getElementById('feedback');
+    const totalPriceDisplay = document.getElementById('totalPrice');
+    const taxAmountDisplay = document.getElementById('taxAmount');
+    const totalWithTaxDisplay = document.getElementById('totalWithTax');
+    const finalizePayment = document.getElementById('finalizePayment');
+    const toggleSelectAll = document.getElementById('toggleSelectAll');
+    const produtosCadastrados = new Map();
+    const precoProduto = 1.99;
+
+    function calcularTotal() {
+        let totalProdutos = 0;
+        produtosCadastrados.forEach(checked => {
+            if (checked) totalProdutos += precoProduto;
+        });
+
+        const taxa = totalProdutos > 5 ? totalProdutos * 0.15 : 0;
+        const totalComTaxa = totalProdutos + taxa;
+        totalPriceDisplay.textContent = `R$${totalProdutos.toFixed(2)}`;
+        taxAmountDisplay.textContent = `R$${taxa.toFixed(2)}`;
+        totalWithTaxDisplay.textContent = `R$${totalComTaxa.toFixed(2)}`;
+    }
+
+    function carregarProdutosDoLocalStorage() {
+        const produtosSalvos = JSON.parse(localStorage.getItem('produtos')) || [];
+        produtosSalvos.forEach(produto => {
+            produtosCadastrados.set(produto.nome, false);
+            adicionarProdutoNaLista(produto.nome, produto.imagem);
+        });
+        calcularTotal();
+    }
+
+    function salvarProdutosNoLocalStorage() {
+        const produtosArray = Array.from(produtosCadastrados.keys()).map(nome => ({
+            nome,
+            imagem: document.getElementById(nome).dataset.image
+        }));
+        localStorage.setItem('produtos', JSON.stringify(produtosArray));
+    }
+
+    addBtn.addEventListener('click', () => {
+        const produto = productInput.value.trim();
+        const imageUrl = imageURLInput.value.trim();
+
+        if (produto === "" || imageUrl === "") {
+            feedback.textContent = "Por favor, preencha ambos os campos.";
+            productInput.classList.add('is-invalid');
+            imageURLInput.classList.add('is-invalid');
+            return;
+        }
+
+        if (produtosCadastrados.has(produto)) {
+            feedback.textContent = "Produto já cadastrado.";
+            productInput.classList.add('is-invalid');
+            return;
+        }
+
+        produtosCadastrados.set(produto, false);
+        adicionarProdutoNaLista(produto, imageUrl);
+        salvarProdutosNoLocalStorage();
+        productInput.value = "";
+        imageURLInput.value = "";
+        feedback.textContent = "";
+        productInput.classList.remove('is-invalid');
+        imageURLInput.classList.remove('is-invalid');
+        calcularTotal();
+    });
+
+    function adicionarProdutoNaLista(produto, imagemUrl) {
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item';
+        listItem.id = produto;
+        listItem.dataset.image = imagemUrl;
+
+        const checkBox = document.createElement('input');
+        checkBox.type = 'checkbox';
+        checkBox.className = 'form-check-input';
+        checkBox.addEventListener('change', () => {
+            produtosCadastrados.set(produto, checkBox.checked);
+            salvarProdutosNoLocalStorage();
+            calcularTotal();
+        });
+
+        const productImg = document.createElement('img');
+        productImg.src = imagemUrl;
+        productImg.className = 'product-img';
+
+        const productText = document.createElement('div');
+        productText.className = 'product-text';
+        productText.textContent = produto;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger';
+        deleteBtn.textContent = 'Remover';
+        deleteBtn.onclick = () => {
+            listItem.remove();
+            produtosCadastrados.delete(produto);
+            salvarProdutosNoLocalStorage();
+            calcularTotal();
+        };
+
+        listItem.append(checkBox, productImg, productText, deleteBtn);
+        productList.appendChild(listItem);
+    }
+
+    toggleSelectAll.addEventListener('click', () => {
+        const allSelected = Array.from(produtosCadastrados.values()).every(val => val);
+        produtosCadastrados.forEach((_, key) => produtosCadastrados.set(key, !allSelected));
+        Array.from(productList.children).forEach(item => item.querySelector('input').checked = !allSelected);
+        document.body.style.backgroundColor = !allSelected ? '#ffd700' : '#3a003d';
+        calcularTotal();
+    });
+
+    finalizePayment.addEventListener('click', () => {
+        const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        paymentModal.show();
+    });
+
+    document.getElementById('confirmPayment').addEventListener('click', () => {
+        const endereco = document.getElementById('address').value;
+        const metodoPagamento = document.getElementById('paymentMethod').value;
+
+        if (endereco === "" || metodoPagamento === "") {
+            alert("Por favor, preencha todos os campos.");
+            return;
+        }
+
+        alert("Pagamento confirmado!");
+        document.getElementById('address').value = "";
+        document.getElementById('paymentMethod').value = "cartao";
+        const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        paymentModal.hide();
+    });
+
+    carregarProdutosDoLocalStorage();
+</script>
+</body>
+</html>
